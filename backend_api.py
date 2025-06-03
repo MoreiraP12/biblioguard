@@ -137,7 +137,8 @@ def get_supported_models():
         ],
         "deepseek": [
             "deepseek-chat",
-            "deepseek-coder"
+            "deepseek-coder",
+            "deepseek-ai/deepseek-r1"  # NVIDIA integrated model
         ]
     }
     
@@ -152,10 +153,10 @@ def get_supported_models():
         "api_keys_required": {
             "openai": "OPENAI_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY", 
-            "deepseek": "DEEPSEEK_API_KEY"
+            "deepseek": "DEEPSEEK_API_KEY or nvapi-* for NVIDIA integration"
         },
         "instructions": {
-            "deepseek": "To use DeepSeek models, set DEEPSEEK_API_KEY environment variable or pass api_key parameter. DeepSeek offers competitive performance at lower costs."
+            "deepseek": "To use DeepSeek models: 1) For direct DeepSeek API: set DEEPSEEK_API_KEY environment variable, 2) For NVIDIA integration: pass api_key parameter starting with 'nvapi-' and use model 'deepseek-ai/deepseek-r1'. NVIDIA integration offers easier access and competitive performance."
         }
     })
 
@@ -182,14 +183,19 @@ def analyze_pdf():
         # Get optional parameters
         model_type = request.form.get('model', 'gpt-3.5-turbo')
         output_format = request.form.get('format', 'json')
+        api_key = request.form.get('api_key')  # Accept API key parameter
         
         # Save uploaded file
         filename = secure_filename(file.filename)
         temp_filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(temp_filepath)
         
-        # Initialize paper auditor
-        auditor = PaperAuditor(model_type=model_type)
+        # Initialize paper auditor with API key if provided
+        model_kwargs = {}
+        if api_key:
+            model_kwargs['api_key'] = api_key
+            
+        auditor = PaperAuditor(model_type=model_type, **model_kwargs)
         
         # Perform analysis
         print(f"Starting analysis of {filename} with model {model_type}")

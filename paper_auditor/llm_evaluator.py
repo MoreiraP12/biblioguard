@@ -462,6 +462,22 @@ def create_evaluator(model_type: str, **kwargs) -> LLMEvaluator:
         return AnthropicEvaluator(model=kwargs.get('model', model_type),
                                  api_key=kwargs.get('api_key'))
     elif model_type.startswith('deepseek'):
-        return DeepSeekEvaluator(model=model_type, **kwargs)
+        # Check if using NVIDIA's API integration
+        api_key = kwargs.get('api_key') or os.getenv('DEEPSEEK_API_KEY')
+        base_url = kwargs.get('base_url', "https://api.deepseek.com/v1")
+        
+        # If API key starts with 'nvapi-', use NVIDIA's integration
+        if api_key and api_key.startswith('nvapi-'):
+            base_url = "https://integrate.api.nvidia.com/v1"
+            # For NVIDIA integration, use the full model name with prefix
+            if '/' not in model_type:
+                model_type = f"deepseek-ai/{model_type}"
+        
+        return DeepSeekEvaluator(
+            model=model_type, 
+            api_key=api_key,
+            base_url=base_url,
+            **{k: v for k, v in kwargs.items() if k not in ['api_key', 'base_url', 'model']}
+        )
     else:
         raise ValueError(f"Unsupported LLM type: {model_type}") 
