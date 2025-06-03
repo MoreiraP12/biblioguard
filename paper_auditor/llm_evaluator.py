@@ -361,15 +361,107 @@ RATIONALE: [Brief explanation of your decision]"""
         return JustificationCheck(justified=justified, rationale=rationale)
 
 
+class DeepSeekEvaluator(LLMEvaluator):
+    """DeepSeek API-based evaluator (using OpenAI SDK compatibility)."""
+
+    def __init__(
+        self, 
+        model: str = "deepseek-chat", 
+        api_key: Optional[str] = None,
+        base_url: str = "https://api.deepseek.com/v1",
+        temperature: float = 0.1,
+        top_p: Optional[float] = None, # Default to None, API default is often 1.0
+        max_tokens: int = 500
+    ):
+        try:
+            import openai # DeepSeek is compatible with the OpenAI SDK
+            self.client = openai.OpenAI(
+                api_key=api_key or os.getenv('DEEPSEEK_API_KEY'),
+                base_url=base_url
+            )
+            self.model = model
+            self.temperature = temperature
+            self.top_p = top_p
+            self.max_tokens = max_tokens
+        except ImportError:
+            raise ImportError("openai package is required for DeepSeek evaluator (used for OpenAI SDK compatibility)")
+
+    def evaluate_relevance(
+        self,
+        paper_title: str,
+        paper_abstract: str,
+        citation_metadata: CitationMetadata
+    ) -> RelevanceScore:
+        """Evaluate topical relevance using DeepSeek."""
+        prompt = self._create_relevance_prompt(paper_title, paper_abstract, citation_metadata)
+        
+        api_params: Dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": "You are an expert academic researcher evaluating citation relevance."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            # stream=False is the default for client.chat.completions.create
+        }
+        if self.top_p is not None:
+            api_params["top_p"] = self.top_p
+            
+        try:
+            response = self.client.chat.completions.create(**api_params)
+            content = response.choices[0].message.content
+            return self._parse_relevance_response(content)
+        except Exception as e:
+            logger.error(f"DeepSeek relevance evaluation failed: {e}")
+            return RelevanceScore(score=3, explanation=f"Evaluation failed due to API error: {e}")
+
+    def evaluate_justification(
+        self,
+        citation_context: CitationContext,
+        citation_metadata: CitationMetadata
+    ) -> JustificationCheck:
+        """Evaluate citation justification using DeepSeek."""
+        prompt = self._create_justification_prompt(citation_context, citation_metadata)
+
+        api_params: Dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": "You are an expert academic researcher evaluating citation appropriateness."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+        if self.top_p is not None:
+            api_params["top_p"] = self.top_p
+
+        try:
+            response = self.client.chat.completions.create(**api_params)
+            content = response.choices[0].message.content
+            return self._parse_justification_response(content)
+        except Exception as e:
+            logger.error(f"DeepSeek justification evaluation failed: {e}")
+            return JustificationCheck(justified=True, rationale=f"Evaluation failed due to API error: {e}")
+
+    # Reuse OpenAI's prompt creation and parsing logic as DeepSeek is OpenAI API compatible
+    _create_relevance_prompt = OpenAIEvaluator._create_relevance_prompt
+    _parse_relevance_response = OpenAIEvaluator._parse_relevance_response
+    _create_justification_prompt = OpenAIEvaluator._create_justification_prompt
+    _parse_justification_response = OpenAIEvaluator._parse_justification_response
+
+
 def create_evaluator(model_type: str, **kwargs) -> LLMEvaluator:
     """Factory function to create appropriate evaluator."""
     model_type = model_type.lower()
     
     if model_type.startswith('gpt') or model_type.startswith('openai'):
-        return OpenAIEvaluator(model=kwargs.get('model', 'gpt-3.5-turbo'), 
+        return OpenAIEvaluator(model=kwargs.get('model', model_type), 
                               api_key=kwargs.get('api_key'))
     elif model_type.startswith('claude') or model_type.startswith('anthropic'):
-        return AnthropicEvaluator(model=kwargs.get('model', 'claude-3-sonnet-20240229'),
+        return AnthropicEvaluator(model=kwargs.get('model', model_type),
                                  api_key=kwargs.get('api_key'))
+    elif model_type.startswith('deepseek'):
+        return DeepSeekEvaluator(model=model_type, **kwargs)
     else:
-        raise ValueError(f"Unsupported model type: {model_type}") 
+        raise ValueError(f"Unsupported LLM type: {model_type}") 
