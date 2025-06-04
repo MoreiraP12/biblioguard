@@ -178,6 +178,10 @@ class PaperAuditor:
         doi_match = re.search(r'doi[:\s]*(10\.\d+/[^\s]+)', ref_text, re.IGNORECASE)
         doi = doi_match.group(1) if doi_match else None
         
+        # Clean any trailing punctuation
+        if doi:
+            doi = doi.rstrip('.,;:')
+        
         if title or doi:
             return CitationMetadata(
                 title=title,

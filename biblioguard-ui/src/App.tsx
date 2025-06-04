@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Container, Box, Typography, Card, CardContent, Select, MenuItem, FormControl, InputLabel, Paper, Stack, Tooltip, IconButton } from '@mui/material';
+import { CssBaseline, Container, Box, Typography, Card, CardContent, Select, MenuItem, FormControl, InputLabel, Paper, Stack, Tooltip, IconButton, Alert } from '@mui/material';
 import { motion } from 'framer-motion';
 import PdfUploader from './components/PdfUploader';
 import CitationAnalysis from './components/CitationAnalysis';
@@ -106,6 +106,48 @@ export interface AnalysisReport {
   missing_count: number;
 }
 
+// Simple Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('CitationAnalysis rendering error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Alert severity="error" sx={{ m: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Analysis Display Error
+          </Typography>
+          <Typography variant="body2">
+            There was an error displaying the analysis results. This might be due to unexpected data format from the backend.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', fontSize: '0.8rem' }}>
+            Error: {this.state.error?.message}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Please check the browser console for more details and try again.
+          </Typography>
+        </Alert>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [analysisReport, setAnalysisReport] = useState<AnalysisReport | null>(null);
@@ -132,6 +174,14 @@ function App() {
       });
       
       console.log('Analysis completed successfully:', apiReport);
+      console.log('Report structure check:', {
+        paper_title: typeof apiReport.paper_title,
+        paper_authors: Array.isArray(apiReport.paper_authors),
+        total_citations: typeof apiReport.total_citations,
+        audited_citations: Array.isArray(apiReport.audited_citations),
+        first_citation: apiReport.audited_citations?.[0]
+      });
+      
       setAnalysisReport(apiReport);
       
     } catch (error) {
@@ -252,9 +302,7 @@ function App() {
                     <MenuItem value="gpt-4o">GPT-4o</MenuItem>
                     <MenuItem value="claude-3-haiku-20240307">Claude 3 Haiku</MenuItem>
                     <MenuItem value="claude-3-sonnet-20240229">Claude 3 Sonnet</MenuItem>
-                    <MenuItem value="claude-3-opus-20240229">Claude 3 Opus</MenuItem>
-                    <MenuItem value="deepseek-chat">DeepSeek Chat 💰</MenuItem>
-                    <MenuItem value="deepseek-coder">DeepSeek Coder 💰</MenuItem>
+                    <MenuItem value="deepseek-ai/deepseek-r1">DeepSeek 💰</MenuItem>
                   </Select>
                 </FormControl>
                 
@@ -299,7 +347,9 @@ function App() {
                   isAnalyzing={isAnalyzing}
                 />
               ) : (
-                <CitationAnalysis report={analysisReport} />
+                <ErrorBoundary>
+                  <CitationAnalysis report={analysisReport} />
+                </ErrorBoundary>
               )}
             </CardContent>
           </Card>

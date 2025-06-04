@@ -64,43 +64,70 @@ class ApiService {
   }
 
   private transformBackendResponse(backendData: any): AnalysisReport {
+    // Defensive function to ensure arrays are properly handled
+    const ensureArray = (value: any): any[] => {
+      if (Array.isArray(value)) return value;
+      if (value == null) return [];
+      // If it's a single value, wrap it in an array
+      return [value];
+    };
+
+    // Defensive function to ensure safe string values
+    const ensureString = (value: any): string => {
+      if (value == null) return '';
+      if (typeof value === 'object') {
+        // Don't pass objects directly - they cause React rendering errors
+        return JSON.stringify(value);
+      }
+      return String(value);
+    };
+
+    // Defensive function to ensure safe number values
+    const ensureNumber = (value: any): number => {
+      if (typeof value === 'number' && !isNaN(value)) return value;
+      const parsed = parseInt(String(value), 10);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    console.log('Transforming backend response:', backendData);
+
     // Transform the Python backend response to match our frontend interface
     return {
-      paper_title: backendData.paper?.title || 'Unknown Title',
-      paper_authors: backendData.paper?.authors || [],
-      total_citations: backendData.total_citations || 0,
-      passed_count: backendData.summary?.passed_count || 0,
-      suspect_count: backendData.summary?.suspect_count || 0,
-      missing_count: backendData.summary?.missing_count || 0,
-      audited_citations: (backendData.citations || []).map((citation: any) => ({
-        citation_key: citation.citation_key,
-        original_text: citation.original_text,
+      paper_title: ensureString(backendData.paper?.title || backendData.paper_title || 'Unknown Title'),
+      paper_authors: ensureArray(backendData.paper?.authors || backendData.paper_authors),
+      total_citations: ensureNumber(backendData.total_citations),
+      passed_count: ensureNumber(backendData.summary?.passed_count || backendData.passed_count),
+      suspect_count: ensureNumber(backendData.summary?.suspect_count || backendData.suspect_count),
+      missing_count: ensureNumber(backendData.summary?.missing_count || backendData.missing_count),
+      audited_citations: ensureArray(backendData.citations || backendData.audited_citations).map((citation: any) => ({
+        citation_key: ensureString(citation.citation_key),
+        original_text: ensureString(citation.original_text),
         metadata: {
-          title: citation.metadata?.title,
-          authors: citation.metadata?.authors || [],
+          title: ensureString(citation.metadata?.title),
+          authors: ensureArray(citation.metadata?.authors),
           year: citation.metadata?.year,
-          journal: citation.metadata?.journal,
-          doi: citation.metadata?.doi,
-          url: citation.metadata?.url,
+          journal: ensureString(citation.metadata?.journal),
+          doi: ensureString(citation.metadata?.doi),
+          url: ensureString(citation.metadata?.url),
         },
-        contexts: (citation.contexts || []).map((context: any) => ({
+        contexts: ensureArray(citation.contexts).map((context: any) => ({
           page_number: context.page_number,
-          section: context.section,
-          surrounding_text: context.surrounding_text,
-          claim_statement: context.claim_statement,
+          section: ensureString(context.section),
+          surrounding_text: ensureString(context.surrounding_text),
+          claim_statement: ensureString(context.claim_statement),
         })),
-        exists_online: citation.exists_online,
-        existence_details: citation.existence_details,
+        exists_online: Boolean(citation.exists_online),
+        existence_details: ensureString(citation.existence_details),
         relevance: citation.relevance ? {
-          score: citation.relevance.score,
-          explanation: citation.relevance.explanation,
+          score: ensureNumber(citation.relevance.score),
+          explanation: ensureString(citation.relevance.explanation),
         } : undefined,
         justification: citation.justification ? {
-          justified: citation.justification.justified,
-          rationale: citation.justification.rationale,
+          justified: Boolean(citation.justification.justified),
+          rationale: ensureString(citation.justification.rationale),
         } : undefined,
         status: this.mapBackendStatus(citation.status),
-        source_database: citation.source_database,
+        source_database: ensureString(citation.source_database),
       })),
     };
   }

@@ -108,6 +108,25 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
     );
   };
 
+  // Defensive helper functions to ensure safe rendering
+  const safeArrayJoin = (arr: any, separator: string = ', '): string => {
+    if (!arr) return 'Not available';
+    if (Array.isArray(arr)) {
+      return arr.filter(item => item != null).join(separator) || 'Not available';
+    }
+    // If it's not an array but exists, convert to string
+    return String(arr);
+  };
+
+  const safeString = (value: any): string => {
+    if (value == null) return 'Not available';
+    if (typeof value === 'object') {
+      // Don't render objects directly - convert to string representation
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   const passRate = Math.round((report.passed_count / report.total_citations) * 100);
 
   return (
@@ -123,10 +142,10 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
               Analysis Results
             </Typography>
             <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
-              {report.paper_title}
+              {safeString(report.paper_title)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Authors: {report.paper_authors.join(', ')}
+              Authors: {safeArrayJoin(report.paper_authors)}
             </Typography>
           </Box>
 
@@ -320,7 +339,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                           Authors:
                         </Typography>
                         <Typography variant="body2">
-                          {citation.metadata.authors.join(', ') || 'Not available'}
+                          {safeArrayJoin(citation.metadata.authors)}
                         </Typography>
                       </Box>
                       
@@ -329,7 +348,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                           Year:
                         </Typography>
                         <Typography variant="body2">
-                          {citation.metadata.year || 'Not available'}
+                          {safeString(citation.metadata.year)}
                         </Typography>
                       </Box>
                       
@@ -339,7 +358,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                             Journal:
                           </Typography>
                           <Typography variant="body2">
-                            {citation.metadata.journal}
+                            {safeString(citation.metadata.journal)}
                           </Typography>
                         </Box>
                       )}
@@ -350,7 +369,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                             DOI:
                           </Typography>
                           <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {citation.metadata.doi}
+                            {safeString(citation.metadata.doi)}
                             <IconButton size="small" href={`https://doi.org/${citation.metadata.doi}`} target="_blank">
                               <LinkIcon fontSize="small" />
                             </IconButton>
@@ -363,7 +382,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                           Existence Status:
                         </Typography>
                         <Typography variant="body2">
-                          {citation.existence_details || (citation.exists_online ? 'Found online' : 'Not found online')}
+                          {safeString(citation.existence_details) || (citation.exists_online ? 'Found online' : 'Not found online')}
                         </Typography>
                       </Box>
                     </Stack>
@@ -380,8 +399,8 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                           severity={citation.relevance.score >= 4 ? 'success' : citation.relevance.score >= 2 ? 'warning' : 'error'}
                           variant="outlined"
                         >
-                          <AlertTitle>Relevance Score: {citation.relevance.score}/5</AlertTitle>
-                          {citation.relevance.explanation}
+                          <AlertTitle>Relevance Score: {safeString(citation.relevance.score)}/5</AlertTitle>
+                          {safeString(citation.relevance.explanation)}
                         </Alert>
                       )}
                       
@@ -393,7 +412,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                           <AlertTitle>
                             {citation.justification.justified ? 'Justification: Valid' : 'Justification: Invalid'}
                           </AlertTitle>
-                          {citation.justification.rationale}
+                          {safeString(citation.justification.rationale)}
                         </Alert>
                       )}
                     </Stack>
@@ -408,14 +427,14 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                       Context in Paper
                       {context.page_number && (
                         <Chip 
-                          label={`Page ${context.page_number}`} 
+                          label={`Page ${safeString(context.page_number)}`} 
                           size="small" 
                           sx={{ ml: 2 }}
                         />
                       )}
                       {context.section && (
                         <Chip 
-                          label={context.section} 
+                          label={safeString(context.section)} 
                           size="small" 
                           variant="outlined"
                           sx={{ ml: 1 }}
@@ -437,8 +456,8 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                     >
                       <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
                         {citation.status === 'SUSPECT' || citation.status === 'MISSING'
-                          ? highlightCitationInText(context.surrounding_text, citation.original_text)
-                          : context.surrounding_text
+                          ? highlightCitationInText(safeString(context.surrounding_text), safeString(citation.original_text))
+                          : safeString(context.surrounding_text)
                         }
                       </Typography>
                       
@@ -448,7 +467,7 @@ const CitationAnalysis: React.FC<CitationAnalysisProps> = ({ report }) => {
                             Specific Claim:
                           </Typography>
                           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                            "{context.claim_statement}"
+                            "{safeString(context.claim_statement)}"
                           </Typography>
                         </Box>
                       )}
