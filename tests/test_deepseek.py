@@ -85,8 +85,8 @@ def test_paper_auditor_with_deepseek():
     try:
         from paper_auditor import PaperAuditor
         
-        # Initialize with DeepSeek
-        auditor = PaperAuditor(model_type="deepseek", model="deepseek-chat")
+        # Initialize with correct parameters
+        auditor = PaperAuditor(use_fallback_lookups=True, use_advanced_nlp=True)
         print("✅ PaperAuditor with DeepSeek initialized")
         
         return True

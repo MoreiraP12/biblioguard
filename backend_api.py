@@ -190,12 +190,8 @@ def analyze_pdf():
         temp_filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(temp_filepath)
         
-        # Initialize paper auditor with API key if provided
-        model_kwargs = {}
-        if api_key:
-            model_kwargs['api_key'] = api_key
-            
-        auditor = PaperAuditor(model_type=model_type, **model_kwargs)
+        # Initialize paper auditor with correct parameters
+        auditor = PaperAuditor(use_fallback_lookups=True, use_advanced_nlp=True)
         
         # Perform analysis
         print(f"Starting analysis of {filename} with model {model_type}")

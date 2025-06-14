@@ -172,7 +172,7 @@ def audit(
             return
         
         # Initialize auditor
-        auditor = PaperAuditor(model_type, **model_kwargs)
+        auditor = PaperAuditor(use_fallback_lookups=True, use_advanced_nlp=True)
         
         # Run audit
         click.echo("🔍 Auditing paper references...")

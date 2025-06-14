@@ -33,17 +33,49 @@ class CitationMetadata:
 @dataclass
 class CitationContext:
     """Context where a citation is used in the paper."""
+    # Original fields (for backward compatibility)
     page_number: Optional[int] = None
     section: Optional[str] = None
     surrounding_text: str = ""
     claim_statement: str = ""
+    
+    # Enhanced fields (for advanced extraction)
+    before_text: Optional[str] = None
+    citation_text: Optional[str] = None
+    after_text: Optional[str] = None
+    full_sentence: Optional[str] = None
+    
+    def __post_init__(self):
+        """Ensure compatibility between old and new formats."""
+        # If using new format, build surrounding_text from components
+        if self.before_text is not None and self.after_text is not None:
+            if not self.surrounding_text:
+                citation_part = self.citation_text or "[citation]"
+                self.surrounding_text = f"{self.before_text}{citation_part}{self.after_text}"
+        
+        # If claim_statement is not set but full_sentence is, use full_sentence
+        if not self.claim_statement and self.full_sentence:
+            self.claim_statement = self.full_sentence
 
 
 @dataclass
 class RelevanceScore:
     """Relevance score and explanation."""
-    score: int  # 0-5 scale
-    explanation: str
+    score: int = 0  # 0-5 scale
+    explanation: str = ""
+    overall_score: Optional[float] = None  # Overall computed relevance score (0.0-1.0)
+    
+    # Detailed component scores
+    title_similarity: Optional[float] = None
+    content_similarity: Optional[float] = None
+    keyword_overlap: Optional[float] = None
+    context_relevance: Optional[float] = None
+    semantic_similarity: Optional[float] = None
+    domain_relevance: Optional[float] = None
+    citation_quality: Optional[float] = None
+    
+    # Additional analysis details
+    details: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

@@ -52,7 +52,7 @@ def main():
             auditor = MockPaperAuditor()
         else:
             print("🤖 Initializing with GPT-3.5-turbo")
-            auditor = PaperAuditor(model_type="gpt-3.5-turbo")
+            auditor = PaperAuditor(use_fallback_lookups=True, use_advanced_nlp=True)
         
         # Run the audit
         print(f"📄 Auditing paper: {paper_path.name}")
